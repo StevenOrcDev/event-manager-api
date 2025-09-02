@@ -1,0 +1,54 @@
+version: "3.8"
+
+services:
+  api:
+    build:
+      context: . # Build depuis la racine du projet
+      dockerfile: docker/Dockerfile.dev # Utilise le Dockerfile de dev
+    ports:
+      - "3000:3000" # Expose port 3000 host → container
+    environment: # Variables d'environnement injectées
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/event_manager_dev
+      - REDIS_URL=redis://redis:6379 # "postgres" et "redis" = noms des services
+      - JWT_SECRET=dev-secret-change-in-prod
+    volumes:
+      - .:/app # Mount tout le projet → hot reload
+      - /app/node_modules # Exclut node_modules du mount (performance)
+    depends_on: # Démarre après postgres et redis
+      - postgres
+      - redis
+    restart: unless-stopped # Redémarre sauf si stoppé manuellement
+
+  postgres:
+    image: postgres:15-alpine # Utilise l'image officielle de Postgres
+    ports:
+      - "5432:5432" # Expose le port 5432 host → container
+    environment:
+      - POSTGRES_DB=event_manager_dev
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data # Persistance des données
+      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql # Script d'init
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine # Cache en mémoire pour sessions/perf
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  adminer:
+    image: adminer # Interface web pour gérer la DB
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
