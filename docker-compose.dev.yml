@@ -10,7 +10,7 @@ services:
     environment: # Variables d'environnement injectées
       - NODE_ENV=development
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/event_manager_dev
-      - REDIS_URL=redis://redis:6379 # "postgres" et "redis" = noms des services
+      - REDIS_URL=redis://redis:6379
       - JWT_SECRET=dev-secret-change-in-prod
     volumes:
       - .:/app # Mount tout le projet → hot reload
