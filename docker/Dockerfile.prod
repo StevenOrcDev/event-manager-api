@@ -8,10 +8,14 @@ WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
-RUN npm ci --only=production
+COPY tsconfig.json ./
 
-# Copy source code
-COPY . .
+# Install ALL dependencies (dev + prod pour le build)
+RUN npm ci
+
+# Copy source code and prisma schema
+COPY src/ ./src/
+COPY prisma/ ./prisma/
 
 # Generate Prisma client
 RUN npx prisma generate
@@ -31,10 +35,13 @@ RUN addgroup -g 1001 -S nodejs && \
 
 WORKDIR /app
 
-# Copy built application
+# Install only production dependencies
+COPY package*.json ./
+RUN npm ci --only=production
+
+# Copy built application from builder stage
 COPY --from=builder --chown=nextjs:nodejs /app/dist ./dist
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
-COPY --from=builder --chown=nextjs:nodejs /app/package*.json ./
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 
 # Switch to non-root user
