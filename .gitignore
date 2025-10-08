@@ -71,3 +71,9 @@ Thumbs.db
 
 # Docker
 .dockerignore
+
+# terraform
+*.tfvars
+*.tfstate
+*.tfstate.backup
+.terraform/ 

@@ -23,13 +23,37 @@ RUN npx prisma generate
 # Build TypeScript
 RUN npm run build
 
+# l'image "Builder" sera JETÉE après compilation et on ne gardera que l'image "Production"
+# Pour des problématiques de performance et de sécurité
+
+# Taille :
+
+# Sans multi-stage : ~300MB
+# Avec multi-stage : ~101MB
+
+# Sécurité :
+
+# Pas de TypeScript compiler en production
+# Pas de devDependencies
+# Surface d'attaque réduite
+
+# Performance :
+
+# Image plus légère = déploiement plus rapide
+# Moins de packages = démarrage plus rapide
+
 # Production stage
 FROM node:18-alpine AS production
 
 # Install OpenSSL for Prisma
-RUN apk add --no-cache openssl dumb-init
+RUN apk add --no-cache openssl dumb-init curl
 
 # Create non-root user
+# Cette etape permet d'eviter d'executer le code avec les droits root
+# Ce qui est une bonne pratique de securite
+# On cree un utilisateur 'nextjs' avec un groupe 'nodejs'
+# avec un UID et GID fixe (1001) pour eviter des problemes de permissions
+# l'option -S permet de creer un utilisateur systeme
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nextjs -u 1001
 

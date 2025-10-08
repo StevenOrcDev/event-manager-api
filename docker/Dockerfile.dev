@@ -1,15 +1,22 @@
 FROM node:18-alpine
 
-# Install OpenSSL for Prisma
+# Cette ligne installe OpenSSL, nécessaire pour Prisma
 RUN apk add --no-cache openssl
 
+# Définir le répertoire de travail dans le conteneur
 WORKDIR /app
 
+# Copier les fichiers package.json et package-lock.json pour installer les dépendances.
+# C'est une bonne pratique de copier uniquement ces fichiers d'abord pour tirer parti du cache Docker.
+# Ainsi les dépendances ne seront réinstallées que si ces fichiers changent.
 COPY package*.json ./
 RUN npm ci
 
+# Copier le reste des fichiers de l'application dans le conteneur à l'endroit du répertoire de travail c'est-à-dire /app
 COPY . .
 
+# Générer le client Prisma
+# La commande gererate crée le client Prisma en fonction du schéma défini dans schema.prisma
 RUN npx prisma generate
 
 EXPOSE 3000

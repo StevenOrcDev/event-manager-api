@@ -15,11 +15,18 @@ jobs:
     runs-on: ubuntu-latest
 
     services:
+      # cette configuration sert à lancer une base de données PostgreSQL et un serveur Redis
       postgres:
         image: postgres:15-alpine
         env:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: event_manager_test
+          # Ces options permettent de configurer la santé du service PostgreSQL
+          # ex : vérifier si le service est prêt à accepter des connexions
+          # health-cmd pg_isready => commande pour vérifier la santé
+          # health-interval 10s => intervalle entre chaque vérification
+          # health-timeout 5s => temps d'attente avant de considérer la vérification comme échouée
+          # health-retries 5 => nombre de tentatives avant de considérer
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -38,14 +45,38 @@ jobs:
         ports:
           - 6379:6379
 
+    # La config "step" définit les étapes à exécuter dans ce job
+    # ici on a le checkout du code, l'installation des dépendances, le linting et les tests
     steps:
+      # Le checkout du code source se fait avec une action officielle GitHub
+      # actions/checkout est une action GitHub officielle qui télécharge le code source de ton repository dans l'environnement d'exécution (runner).
+      # Concrètement, ça fait quoi ?
+      # Sans checkout :
+      # Runner GitHub Actions : [ Système Ubuntu vide ]
+      #                         [ Aucun fichier de ton projet ]
+      # Avec checkout :
+      # Runner GitHub Actions : [ Système Ubuntu + ton code complet ]
+      #                         [ package.json, src/, docker/, etc. ]
       - name: Checkout code
         uses: actions/checkout@v4
 
+        # Cette ligne permet de s'assurer que Node.js est installé
+        # Cette action installe Node.js sur le runner GitHub Actions (machine Ubuntu vide).
+        # Ce qui se passe concrètement :
+        # Avant setup-node :
+        # Runner Ubuntu : [ Système de base ]
+        #                 [ Pas de Node.js, pas de npm ]
+        # Après setup-node :
+        # Runner Ubuntu : [ Système + Node.js 18 + npm ]
+        #                 [ Prêt pour npm ci, npm run build, etc. ]
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
+          # Met en cache node_modules/ entre les runs
+          # Accélère drastiquement les builds suivants
+          # Premier run : télécharge tout (~2-3 min)
+          # Runs suivants : utilise le cache (~30 sec)
           cache: "npm"
 
       - name: Install dependencies
@@ -88,9 +119,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+        # Active Buildx
+        # Remplace le builder Docker par défaut
+        # Utilise un builder plus performant et flexible
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+        # Cette étape va permettre de se connecter à Docker Hub
+        # pour pouvoir pousser l'image construite sur le registry Docker Hub
       - name: Login to Docker Hub
         if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
@@ -98,7 +134,15 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
+          # Cette action génère automatiquement des tags Docker basés sur le contexte Git (branche, commit, PR).
+          # Elle utilise les métadonnées extraites pour créer des tags pertinents
+          # (ex : latest, v1.0.0, commit-sha, etc.)
+          # Ces tags sont ensuite utilisés pour taguer l'image Docker lors de la construction.
+          # Cela permet de versionner les images Docker de manière cohérente avec le code source
+          # et facilite la gestion des versions et des déploiements.
       - name: Extract metadata
+        # ici l'identifiant "meta" permet de réutiliser cette étape plus bas
+        # avec la syntaxe steps.meta.outputs.tags
         id: meta
         uses: docker/metadata-action@v5
         with:
