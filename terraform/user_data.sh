@@ -32,12 +32,6 @@ services:
       - JWT_SECRET=${jwt_secret}
       - LOG_LEVEL=info
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
 EOF
 
 # Start application
