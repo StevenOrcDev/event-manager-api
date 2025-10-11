@@ -104,6 +104,7 @@ resource "digitalocean_droplet" "app" {
     db_password  = digitalocean_database_cluster.postgres.password
     valkey_host   = digitalocean_database_cluster.valkey.private_host
     valkey_port   = digitalocean_database_cluster.valkey.port
+    valkey_password = digitalocean_database_cluster.valkey.password
     jwt_secret   = var.jwt_secret
   })
 

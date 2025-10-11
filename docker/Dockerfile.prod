@@ -62,14 +62,18 @@ WORKDIR /app
 # Create logs directory with proper permissions
 RUN mkdir -p logs && chown nextjs:nodejs logs
 
-# Install only production dependencies
+# Copy package files and prisma schema
 COPY package*.json ./
+COPY --from=builder /app/prisma ./prisma
+
+# Install only production dependencies
 RUN npm ci --only=production
+
+# Generate Prisma client in production stage
+RUN npx prisma generate
 
 # Copy built application from builder stage
 COPY --from=builder --chown=nextjs:nodejs /app/dist ./dist
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 
 # Switch to non-root user
 USER nextjs

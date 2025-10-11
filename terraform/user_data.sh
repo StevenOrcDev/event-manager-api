@@ -28,7 +28,7 @@ services:
     environment:
       - NODE_ENV=production
       - DATABASE_URL=postgresql://${db_user}:${db_password}@${db_host}:${db_port}/${db_name}?sslmode=require
-      - REDIS_URL=redis://${valkey_host}:${valkey_port}
+      - REDIS_URL=rediss://:${valkey_password}@${valkey_host}:${valkey_port}
       - JWT_SECRET=${jwt_secret}
       - LOG_LEVEL=info
     restart: unless-stopped
