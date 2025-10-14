@@ -6,6 +6,8 @@ const logFormat = winston.format.combine(
   winston.format.json()
 );
 
+// En production, les logs seront disponibles dans des fichiers distincts
+// pour les erreurs et les logs combinés.
 export const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || "info",
   format: logFormat,
