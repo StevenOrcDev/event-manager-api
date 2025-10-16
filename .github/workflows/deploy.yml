@@ -1,79 +1,80 @@
 name: Deploy to Digital Ocean
 
 on:
-    workflow_run:
-        workflows: ["CI Pipeline"]
-        types:
-            - completed
-        branches:
-            - main
-    workflow_dispatch: # Permet de déclencher manuellement
+  workflow_run:
+    workflows: ["CI Pipeline"]
+    types:
+      - completed
+    branches:
+      - main
+  # le workflow_dispatch permet de lancer manuellement le déploiement depuis l'interface GitHub
+  workflow_dispatch:
 
 jobs:
-    deploy:
-        name: Deploy to Production
-        runs-on: ubuntu-latest
-        if: ${{ github.event.workflow_run.conclusion == 'success' }}
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
 
-        steps:
-            - name: Checkout code
-              uses: actions/checkout@v4
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-            - name: Setup SSH
-              run: |
-                  mkdir -p ~/.ssh
-                  echo "${{ secrets.DO_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
-                  chmod 600 ~/.ssh/deploy_key
-                  ssh-keyscan -H ${{ secrets.DO_SERVER_IP }} >> ~/.ssh/known_hosts
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DO_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.DO_SERVER_IP }} >> ~/.ssh/known_hosts
 
-            - name: Deploy to server
-              run: |
-                  ssh -i ~/.ssh/deploy_key root@${{ secrets.DO_SERVER_IP }} << 'EOF'
-                    set -e
-                    echo "🚀 Starting deployment..."
-                    
-                    cd /opt/app
-                    
-                    echo "📥 Pulling latest Docker image..."
-                    docker-compose pull
-                    
-                    echo "🔄 Restarting services..."
-                    docker-compose down
-                    docker-compose up -d
-                    
-                    echo "⏳ Waiting for application to start..."
-                    sleep 10
-                    
-                    echo "✅ Deployment complete!"
-                    docker-compose ps
-                  EOF
+      - name: Deploy to server
+        run: |
+          ssh -i ~/.ssh/deploy_key root@${{ secrets.DO_SERVER_IP }} << 'EOF'
+            set -e
+            echo "🚀 Starting deployment..."
+            
+            cd /opt/app
+            
+            echo "📥 Pulling latest Docker image..."
+            docker-compose pull
+            
+            echo "🔄 Restarting services..."
+            docker-compose down
+            docker-compose up -d
+            
+            echo "⏳ Waiting for application to start..."
+            sleep 10
+            
+            echo "✅ Deployment complete!"
+            docker-compose ps
+          EOF
 
-            - name: Health check
-              run: |
-                  echo "🏥 Running health check..."
-                  max_attempts=10
-                  attempt=0
+      - name: Health check
+        run: |
+          echo "🏥 Running health check..."
+          max_attempts=10
+          attempt=0
 
-                  while [ $attempt -lt $max_attempts ]; do
-                    if curl -f http://${{ secrets.DO_SERVER_IP }}:3000/health; then
-                      echo "✅ Health check passed!"
-                      exit 0
-                    fi
-                    
-                    attempt=$((attempt + 1))
-                    echo "⏳ Attempt $attempt/$max_attempts failed, retrying in 5s..."
-                    sleep 5
-                  done
+          while [ $attempt -lt $max_attempts ]; do
+            if curl -f http://${{ secrets.DO_SERVER_IP }}:3000/health; then
+              echo "✅ Health check passed!"
+              exit 0
+            fi
+            
+            attempt=$((attempt + 1))
+            echo "⏳ Attempt $attempt/$max_attempts failed, retrying in 5s..."
+            sleep 5
+          done
 
-                  echo "❌ Health check failed after $max_attempts attempts"
-                  exit 1
+          echo "❌ Health check failed after $max_attempts attempts"
+          exit 1
 
-            - name: Rollback on failure
-              if: failure()
-              run: |
-                  ssh -i ~/.ssh/deploy_key root@${{ secrets.DO_SERVER_IP }} << 'EOF'
-                    echo "⚠️ Deployment failed, attempting rollback..."
-                    cd /opt/app
-                    docker-compose down
-                    docker-compose up -d
-                  EOF
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          ssh -i ~/.ssh/deploy_key root@${{ secrets.DO_SERVER_IP }} << 'EOF'
+            echo "⚠️ Deployment failed, attempting rollback..."
+            cd /opt/app
+            docker-compose down
+            docker-compose up -d
+          EOF

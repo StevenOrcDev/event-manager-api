@@ -27,7 +27,7 @@ app.use(express.urlencoded({ extended: true }));
 
 app.get("/health", (req, res) => {
   res.json({
-    status: "OK",
+    status: "OK the server is running",
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV,
   });
