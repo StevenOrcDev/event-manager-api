@@ -5,7 +5,7 @@ describe("Health Check", () => {
   it("should return 200 and health status", async () => {
     const response = await request(app).get("/health").expect(200);
 
-    expect(response.body).toHaveProperty("status", "OK the server is running");
+    expect(response.body).toHaveProperty("status", "Server OK,running...");
     expect(response.body).toHaveProperty("timestamp");
     expect(response.body).toHaveProperty("environment");
   });

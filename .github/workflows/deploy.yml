@@ -7,8 +7,7 @@ on:
       - completed
     branches:
       - main
-  # le workflow_dispatch permet de lancer manuellement le déploiement depuis l'interface GitHub
-  workflow_dispatch:
+  workflow_dispatch: # Permet de déclencher manuellement
 
 jobs:
   deploy:
@@ -21,15 +20,16 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.DO_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H ${{ secrets.DO_SERVER_IP }} >> ~/.ssh/known_hosts
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DO_SSH_PRIVATE_KEY }}
+
+      - name: Add server to known hosts
+        run: ssh-keyscan -H ${{ secrets.DO_SERVER_IP }} >> ~/.ssh/known_hosts
 
       - name: Deploy to server
         run: |
-          ssh -i ~/.ssh/deploy_key root@${{ secrets.DO_SERVER_IP }} << 'EOF'
+          ssh root@${{ secrets.DO_SERVER_IP }} << 'EOF'
             set -e
             echo "🚀 Starting deployment..."
             
@@ -72,7 +72,7 @@ jobs:
       - name: Rollback on failure
         if: failure()
         run: |
-          ssh -i ~/.ssh/deploy_key root@${{ secrets.DO_SERVER_IP }} << 'EOF'
+          ssh root@${{ secrets.DO_SERVER_IP }} << 'EOF'
             echo "⚠️ Deployment failed, attempting rollback..."
             cd /opt/app
             docker-compose down

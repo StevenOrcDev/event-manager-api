@@ -29,8 +29,11 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
     volumes:
-      - postgres_data:/var/lib/postgresql/data # Persistance des données
-      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql # Script d'init
+      # mapping : volume Docker → dossier sur l'hôte
+      - postgres_data:/var/lib/postgresql/data
+      # cette ligne permet d'initialiser la DB avec un script SQL. Doc officielle :
+      # https://hub.docker.com/_/postgres
+      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
     restart: unless-stopped
 
   redis:
@@ -48,7 +51,6 @@ services:
     depends_on:
       - postgres
     restart: unless-stopped
-
 volumes:
   postgres_data:
   redis_data:
