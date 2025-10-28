@@ -37,7 +37,7 @@ variable "droplet_size" {
 variable "db_size" {
   description = "Taille de la base PostgreSQL"
   type        = string
-  default     = "db-s-1vcpu-1gb" 
+  default     = "db-s-1vcpu-1gb"
 }
 
 variable "cache_size" {

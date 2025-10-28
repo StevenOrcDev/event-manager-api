@@ -1,6 +1,8 @@
 # Cette ligne indique la version minimale de Terraform et les providers requis
 terraform {
   required_version = ">= 1.0"
+
+  backend "s3" {} # ← on laisse vide : on injecte la config via -backend-config
   # Cette section définit les providers nécessaires, ici Digital Ocean
   required_providers {
     digitalocean = {
@@ -30,7 +32,7 @@ resource "digitalocean_database_cluster" "postgres" {
   size       = var.db_size
   region     = var.region
   node_count = 1
-  
+
   private_network_uuid = digitalocean_vpc.app_vpc.id
 }
 
@@ -48,7 +50,7 @@ resource "digitalocean_database_cluster" "valkey" {
   size       = var.cache_size
   region     = var.region
   node_count = 1
-  
+
   # Cette ligne permet de connecter Redis au VPC et donc de sécuriser les échanges. Sans cela Redis serait accessible publiquement.
   # C'est comme si on disait : "Mets Redis dans le réseau privé VPC, pas sur Internet public"
   # private_network_uuid est un argument qui spécifie l'UUID du réseau privé (VPC) auquel la base de données doit être connectée.
@@ -65,16 +67,16 @@ resource "digitalocean_droplet" "app" {
   vpc_uuid = digitalocean_vpc.app_vpc.id
 
   user_data = templatefile("${path.module}/user_data.sh", {
-    docker_image = var.docker_image
-    db_host      = digitalocean_database_cluster.postgres.private_host
-    db_port      = digitalocean_database_cluster.postgres.port
-    db_name      = digitalocean_database_db.app_db.name
-    db_user      = digitalocean_database_cluster.postgres.user
-    db_password  = digitalocean_database_cluster.postgres.password
-    valkey_host   = digitalocean_database_cluster.valkey.private_host
-    valkey_port   = digitalocean_database_cluster.valkey.port
+    docker_image    = var.docker_image
+    db_host         = digitalocean_database_cluster.postgres.private_host
+    db_port         = digitalocean_database_cluster.postgres.port
+    db_name         = digitalocean_database_db.app_db.name
+    db_user         = digitalocean_database_cluster.postgres.user
+    db_password     = digitalocean_database_cluster.postgres.password
+    valkey_host     = digitalocean_database_cluster.valkey.private_host
+    valkey_port     = digitalocean_database_cluster.valkey.port
     valkey_password = digitalocean_database_cluster.valkey.password
-    jwt_secret   = var.jwt_secret
+    jwt_secret      = var.jwt_secret
   })
 
   depends_on = [

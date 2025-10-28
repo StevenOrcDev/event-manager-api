@@ -78,5 +78,12 @@ Thumbs.db
 *.tfstate.backup
 .terraform/ 
 
-# ignore deploy file in .github folder
-.github/workflows/deploy.yml
+
+*.tfstate
+*.tfstate.*
+crash.log
+override.tf
+override.tf.json
+.terraform/
+.terraform.lock.hcl
+backend.hcl.local

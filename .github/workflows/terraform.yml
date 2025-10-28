@@ -1,0 +1,109 @@
+name: Terraform CI/CD
+
+on:
+  workflow_run:
+    workflows: ["CI Pipeline"]
+    types:
+      - completed
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  TF_VERSION: 1.7.5
+  DO_REGION: fra1
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  AWS_EC2_METADATA_DISABLED: true
+
+jobs:
+  terraform:
+    name: Terraform Plan & Apply
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        environment: [staging, production]
+
+    defaults:
+      run:
+        working-directory: terraform/environments/${{ matrix.environment }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Init
+        env:
+          TF_VAR_do_token: ${{ secrets.TF_VAR_do_token }}
+        run: terraform init -backend-config=backend.hcl
+
+      - name: Terraform Format
+        run: terraform fmt -check
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Plan (debug)
+        id: plan
+        env:
+          TF_LOG: DEBUG
+          TF_LOG_PATH: terraform-debug.log
+          TF_VAR_do_token: ${{ secrets.TF_VAR_do_token }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          TF_VAR_jwt_secret: ${{ matrix.environment == 'staging' && secrets.TF_VAR_jwt_secret_staging || secrets.TF_VAR_jwt_secret_production }}
+          AWS_EC2_METADATA_DISABLED: true
+        run: terraform plan -input=false -no-color -out=tfplan
+
+      - name: Upload Terraform debug log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-debug-log-${{ matrix.environment }}
+          path: terraform/environments/${{ matrix.environment }}/terraform-debug.log
+
+      - name: Upload Terraform Plan as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-${{ matrix.environment }}
+          path: terraform/environments/${{ matrix.environment }}/tfplan
+
+      - name: Terraform Apply (staging auto)
+        if: matrix.environment == 'staging' && github.ref == 'refs/heads/develop'
+        env:
+          TF_VAR_do_token: ${{ secrets.TF_VAR_do_token }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          TF_VAR_jwt_secret: ${{ matrix.environment == 'staging' && secrets.TF_VAR_jwt_secret_staging || secrets.TF_VAR_jwt_secret_production }}
+          AWS_EC2_METADATA_DISABLED: true
+        run: terraform apply -input=false -auto-approve tfplan
+
+      - name: Await manual approval for production
+        if: matrix.environment == 'production' && github.ref == 'refs/heads/main'
+        uses: trstringer/manual-approval@v1
+        with:
+          secret: ${{ github.token }}
+          approvers: StevenOrcDev
+          issue-title: "Terraform Apply - Production"
+          issue-body: "Approve to apply production infrastructure changes."
+
+      - name: Terraform Apply (production)
+        if: matrix.environment == 'production' && github.ref == 'refs/heads/main'
+        env:
+          TF_VAR_do_token: ${{ secrets.TF_VAR_do_token }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          TF_VAR_jwt_secret: ${{ matrix.environment == 'staging' && secrets.TF_VAR_jwt_secret_staging || secrets.TF_VAR_jwt_secret_production }}
+          AWS_EC2_METADATA_DISABLED: true
+        run: terraform apply -input=false -auto-approve tfplan
