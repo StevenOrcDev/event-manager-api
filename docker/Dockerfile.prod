@@ -42,6 +42,9 @@ RUN npm run build
 # Image plus légère = déploiement plus rapide
 # Moins de packages = démarrage plus rapide
 
+# Le git SHA de la build peut être passé en argument pour le versioning
+ARG GIT_SHA
+
 # Production stage
 FROM node:18-alpine AS production
 
@@ -58,6 +61,7 @@ RUN addgroup -g 1001 -S nodejs && \
     adduser -S nextjs -u 1001
 
 WORKDIR /app
+ENV GIT_SHA=$GIT_SHA
 
 # Create logs directory with proper permissions
 RUN mkdir -p logs && chown nextjs:nodejs logs
