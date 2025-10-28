@@ -9,6 +9,10 @@ import { errorHandler } from "./middleware/errorHandler";
 import { authRoutes } from "./routes/auth";
 import { eventRoutes } from "./routes/events";
 import { userRoutes } from "./routes/users";
+import healthRoute from "./routes/health";
+// dotenv config
+import dotenv from "dotenv";
+dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -25,18 +29,19 @@ app.use(compression());
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 
-app.get("/health", (req, res) => {
-  res.json({
-    status: "Server OK,running...",
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV,
-  });
-});
+// app.get("/health", (req, res) => {
+//   res.json({
+//     status: "Server OK,running...",
+//     timestamp: new Date().toISOString(),
+//     environment: process.env.NODE_ENV,
+//   });
+// });
 
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/events", eventRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/health", healthRoute);
 
 app.use(errorHandler);
 
@@ -55,7 +60,9 @@ async function startServer() {
     await prisma.$connect();
     logger.info("Connected to Prisma");
 
-    app.listen(PORT, () => {});
+    app.listen(PORT, () => {
+      logger.info(`Server is running on port ${PORT}`);
+    });
   } catch (error) {
     logger.error("Failed to start server:", error);
     process.exit(1);

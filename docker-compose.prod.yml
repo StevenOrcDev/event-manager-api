@@ -1,0 +1,58 @@
+version: "3.8"
+
+services:
+  api:
+    # l’image Docker construite par ta CI/CD
+    image: stevenorc/event-manager-api:latest
+    container_name: event-manager-api
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/event_manager_prod
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: change-me-in-prod
+      LOG_LEVEL: info
+      PORT: 3000
+    depends_on:
+      - postgres
+      - redis
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: event-manager-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: event_manager_prod
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: event-manager-valkey
+    restart: unless-stopped
+    volumes:
+      - redis_data_prod:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data_prod:
+  redis_data_prod:

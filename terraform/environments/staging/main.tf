@@ -1,7 +1,5 @@
-# Cette ligne indique la version minimale de Terraform et les providers requis
 terraform {
   required_version = ">= 1.0"
-  # Cette section définit les providers nécessaires, ici Digital Ocean
   required_providers {
     digitalocean = {
       source  = "digitalocean/digitalocean"
@@ -10,12 +8,10 @@ terraform {
   }
 }
 
-# Cette ligne permet de configurer le provider Digital Ocean avec le token d'authentification
 provider "digitalocean" {
   token = var.do_token
 }
 
-# Ici nous définissons les variables utilisées dans le script, ex : token, région, environment, image Docker, etc.
 variable "do_token" {
   description = "Token Digital Ocean"
   type        = string
@@ -23,7 +19,7 @@ variable "do_token" {
 }
 
 variable "environment" {
-  description = "Environnement (staging ou production)"
+  description = "Environnement (staging)"
   type        = string
   default     = "staging"
 }
@@ -46,37 +42,32 @@ variable "jwt_secret" {
   sensitive   = true
 }
 
-# Le VPC est une ressource réseau privée pour isoler les ressources
-# Ici, nous créons un VPC pour notre application
 resource "digitalocean_vpc" "app_vpc" {
   name   = "${var.environment}-vpc"
   region = var.region
 }
 
-# On crée une base de données PostgreSQL sur Digital Ocean
 resource "digitalocean_database_cluster" "postgres" {
   name       = "${var.environment}-postgres"
   engine     = "pg"
   version    = "15"
-  size       = "db-s-1vcpu-1gb"
+  size       = var.db_size
   region     = var.region
   node_count = 1
   
   private_network_uuid = digitalocean_vpc.app_vpc.id
 }
 
-# Base de données - Créer la database
 resource "digitalocean_database_db" "app_db" {
   cluster_id = digitalocean_database_cluster.postgres.id
   name       = "event_manager_${var.environment}"
 }
 
-# Redis/Valkey (cache)
 resource "digitalocean_database_cluster" "valkey" {
   name       = "${var.environment}-valkey"
   engine     = "valkey"
   version    = "8"
-  size       = "db-s-1vcpu-1gb"
+  size       = var.db_size
   region     = var.region
   node_count = 1
   
@@ -92,7 +83,7 @@ resource "digitalocean_droplet" "app" {
   image    = "docker-20-04"
   name     = "${var.environment}-api"
   region   = var.region
-  size     = "s-1vcpu-1gb"
+  size     = var.droplet_size
   vpc_uuid = digitalocean_vpc.app_vpc.id
 
   user_data = templatefile("${path.module}/user_data.sh", {
