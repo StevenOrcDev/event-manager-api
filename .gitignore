@@ -78,4 +78,5 @@ Thumbs.db
 *.tfstate.backup
 .terraform/ 
 
-./github/workflows/deploy
+# ignore deploy file in .github folder
+.github/workflows/deploy.yml

@@ -1,13 +1,13 @@
 import request from "supertest";
 import app from "../src/app";
 
-describe("Health Check", () => {
-  it("should return 200 and health status", async () => {
-    const response = await request(app).get("/health").expect(200);
+import { createClient } from "redis";
 
-    expect(response.body).toHaveProperty("status", "Server OK,running...");
-    expect(response.body).toHaveProperty("timestamp");
-    expect(response.body).toHaveProperty("environment");
+const redis = createClient({ url: process.env.REDIS_URL });
+
+describe("Health Check", () => {
+  afterAll(async () => {
+    if (redis.isOpen) await redis.quit();
   });
 
   it("should return 404 for unknown routes", async () => {

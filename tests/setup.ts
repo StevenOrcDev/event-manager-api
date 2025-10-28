@@ -1,8 +1,10 @@
 // Test setup file
 import { PrismaClient } from "@prisma/client";
+import { createClient } from "redis";
 
 // Global test database
 let prisma: PrismaClient;
+let redis: ReturnType<typeof createClient>;
 
 beforeAll(async () => {
   prisma = new PrismaClient({
@@ -14,9 +16,16 @@ beforeAll(async () => {
       },
     },
   });
+
+  redis = createClient({ url: process.env.REDIS_URL });
+  if (!redis.isOpen) await redis.connect();
 });
 
 afterAll(async () => {
+  if (redis && redis.isOpen) {
+    await redis.quit();
+  }
+
   if (prisma) {
     await prisma.$disconnect();
   }
