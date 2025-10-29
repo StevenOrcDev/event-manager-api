@@ -54,6 +54,20 @@ jobs:
       - name: Terraform Validate
         run: terraform validate
 
+      - name: Debug branch context
+        run: |
+          echo "------------------------------------"
+          echo "📦  Debugging GitHub Context"
+          echo "------------------------------------"
+          echo "GITHUB_REF: $GITHUB_REF"
+          echo "GITHUB_HEAD_REF: $GITHUB_HEAD_REF"
+          echo "GITHUB_BASE_REF: $GITHUB_BASE_REF"
+          echo "current branch ref: ${{ github.ref }}"
+          echo "workflow_run.head_branch: ${{ github.event.workflow_run.head_branch }}"
+          echo "workflow_run.event: ${{ github.event.workflow_run.event }}"
+          echo "workflow_run.status: ${{ github.event.workflow_run.status }}"
+          echo "------------------------------------"
+
       - name: Terraform Plan (debug)
         id: plan
         env:
@@ -80,7 +94,7 @@ jobs:
           path: terraform/environments/${{ matrix.environment }}/tfplan
 
       - name: Terraform Apply (staging auto)
-        if: matrix.environment == 'staging' && github.ref == 'refs/heads/develop'
+        if: matrix.environment == 'staging' && github.event.workflow_run.head_branch == 'develop'
         env:
           TF_VAR_do_token: ${{ secrets.TF_VAR_do_token }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
