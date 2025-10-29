@@ -1,5 +1,5 @@
 bucket                      = "event-manager-tfstate"
-key                         = "production/terraform.tfstate"
+key                         = "staging/terraform.tfstate"
 region                      = "us-east-1"
 endpoints                   = { s3 = "https://fra1.digitaloceanspaces.com"}
 skip_credentials_validation = true
